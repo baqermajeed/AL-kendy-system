@@ -16,8 +16,8 @@ class Settings(BaseSettings):
 
     MONGODB_URI: str = "mongodb://localhost:27017/"
 
-    # JWT settings — نفس الـ secret في backend (فرح) ليقبل الكندي توكن موظف الـ call center عند إضافة موعد من فرونت فرح.
-    # يمكن التعديل عبر .env إذا أردت تشغيل الكندي مستقلاً بمصادقة خاصة.
+    # JWT settings — يجب أن يكون نفس القيمة في backend (فرح) ليقبل الكندي توكن موظف الـ call center.
+    # على السيرفر: في .env ضع JWT_SECRET=farah_sys_final_project (كلمة project كاملة بحرف t في الآخر).
     JWT_SECRET: str = "farah_sys_final_project"
     JWT_ALGORITHM: str = "HS256"
     # مدة صلاحية الـ Access Token (قصير المدى - 1 ساعة)
