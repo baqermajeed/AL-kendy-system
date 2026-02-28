@@ -16,8 +16,9 @@ class Settings(BaseSettings):
 
     MONGODB_URI: str = "mongodb://localhost:27017/"
 
-    # JWT settings
-    JWT_SECRET: str = "alkendy_super_secret_key"
+    # JWT settings — نفس الـ secret في backend (فرح) ليقبل الكندي توكن موظف الـ call center عند إضافة موعد من فرونت فرح.
+    # يمكن التعديل عبر .env إذا أردت تشغيل الكندي مستقلاً بمصادقة خاصة.
+    JWT_SECRET: str = "farah_sys_final_project"
     JWT_ALGORITHM: str = "HS256"
     # مدة صلاحية الـ Access Token (قصير المدى - 1 ساعة)
     # Access Token قصير لأسباب أمنية، يتم تجديده تلقائياً باستخدام Refresh Token
