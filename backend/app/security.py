@@ -105,6 +105,20 @@ async def get_current_user(
     except Exception:
         user = None
     if not user:
+        # توكن صادر من فرح (نفس JWT_SECRET) والمستخدم غير موجود في قاعدة الكندي — نَبني مستخدمًا من التوكن لطلب واحد (مثلاً call_center يضيف موعدًا).
+        role_str = (payload.get("role") or "").strip()
+        if role_str in ("call_center", "admin"):
+            try:
+                role_enum = Role(role_str)
+            except ValueError:
+                role_enum = Role.CALL_CENTER
+            user = User(
+                id=OID(user_id),
+                phone=payload.get("phone") or "",
+                role=role_enum,
+                username=payload.get("username") or None,
+            )
+            return user
         raise credentials_exception
     return user
 
