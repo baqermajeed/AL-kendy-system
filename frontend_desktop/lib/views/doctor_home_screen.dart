@@ -983,44 +983,59 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen>
                 ),
                 SizedBox(width: 30.w),
                 // Search Bar
-                Container(
-                  width: 650.w,
-                  height: 35.h,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(
-                      color: const Color(0xB3649FCC), // 70% opacity of 649FCC
-                      width: 2,
+                Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(
+                      minWidth: 200.w,
+                      maxWidth: 650.w,
                     ),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    textAlign: TextAlign.right,
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن مريض....',
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
+                    height: 40.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: const Color(0xB3649FCC), // 70% opacity of 649FCC
+                        width: 2,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      style: TextStyle(
                         fontSize: 14.sp,
+                        height: 1.2,
                       ),
-                      // Icon from the right (Arabic layout)
-                      suffixIcon: Icon(
-                        Icons.search,
-                        color: Colors.grey[400],
-                        size: 20.sp,
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن مريض....',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14.sp,
+                          height: 1.2,
+                        ),
+                        // Icon from the right (Arabic layout)
+                        suffixIcon: Padding(
+                          padding: EdgeInsets.all(8.w),
+                          child: Icon(
+                            Icons.search,
+                            color: Colors.grey[400],
+                            size: 20.sp,
+                          ),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
+                      onChanged: (value) {
+                        setState(() {});
+                      },
+                      cursorColor: AppColors.primary,
                     ),
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    cursorColor: AppColors.primary,
                   ),
                 ),
                 SizedBox(width: 30.w),

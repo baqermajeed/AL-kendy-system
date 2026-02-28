@@ -155,6 +155,9 @@ class CallCenterAppointmentCreate(BaseModel):
     patient_name: str
     patient_phone: str
     scheduled_at: str  # ISO datetime
+    governorate: Optional[str] = ""
+    platform: Optional[str] = ""
+    note: Optional[str] = ""  # ملاحظة اختيارية
 
     @field_validator("scheduled_at")
     @classmethod
@@ -170,14 +173,29 @@ class CallCenterAppointmentCreate(BaseModel):
         raise ValueError("scheduled_at يجب أن يتضمن التاريخ والوقت مثل 2025-11-01T14:30")
 
 
+class CallCenterAppointmentUpdate(BaseModel):
+    """حقول اختيارية لتعديل الموعد."""
+    patient_name: Optional[str] = None
+    patient_phone: Optional[str] = None
+    scheduled_at: Optional[str] = None  # ISO datetime
+    governorate: Optional[str] = None
+    platform: Optional[str] = None
+    note: Optional[str] = None
+
+
 class CallCenterAppointmentOut(BaseModel):
     id: str
     patient_name: str
     patient_phone: str
     scheduled_at: str
+    governorate: str = ""
+    platform: str = ""
+    note: str = ""
     created_by_user_id: str
     created_by_username: str
     created_at: str
+    status: str = "pending"  # "pending" | "accepted"
+    accepted_at: Optional[str] = None  # تاريخ قبول الموعد (ISO)، للإحصائيات حسب شهر القبول
 
     class Config:
         from_attributes = True

@@ -1,9 +1,9 @@
 class ApiConstants {
   /// Base URL for all API calls.
-  /// Default: `https://sys-api.farahdent.com`.
+  /// Default: `https://alkendysys.farahdent.com`.
   /// Use `--dart-define=API_BASE_URL=<url>` or `--dart-define=API_HOST=<host>`
   /// only when you need to target a different backend.
-  static const String _defaultBaseUrl = 'https://sys-api.farahdent.com';
+  static const String _defaultBaseUrl = 'https://alkendysys.farahdent.com';
 
   static const String _apiHostOverride = String.fromEnvironment(
     'API_HOST',

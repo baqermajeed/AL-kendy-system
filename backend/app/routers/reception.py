@@ -3,6 +3,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import re
 
+from beanie import PydanticObjectId as OID
 from beanie.operators import In
 
 from app.schemas import (
@@ -13,10 +14,12 @@ from app.schemas import (
     ReceptionAppointmentOut,
     WorkingHoursOut,
     GalleryOut,
+    CallCenterAppointmentOut,
 )
 from app.security import require_roles, get_current_user
 from app.constants import Role
-from app.models import Patient, User
+from app.models import Patient, User, CallCenterAppointment
+from app.services.stats_service import parse_dates
 from app.services import patient_service
 from app.services.admin_service import create_patient
 from app.services.doctor_working_hours_service import DoctorWorkingHoursService
@@ -521,3 +524,81 @@ async def list_appointments(
         logger = get_logger("reception_router")
         logger.error(f"Error in list_appointments: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/call-center-appointments", response_model=List[CallCenterAppointmentOut])
+async def list_call_center_appointments_for_reception(
+    date_from: Optional[str] = Query(None, description="فلترة حسب تاريخ الموعد من (ISO)"),
+    date_to: Optional[str] = Query(None, description="فلترة حسب تاريخ الموعد إلى (ISO)"),
+    search: Optional[str] = Query(None, description="بحث بالاسم أو الهاتف أو يوزر الموظف"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+):
+    """عرض مواعيد مركز الاتصالات غير المقبولة فقط (المقبولة تُخفى من قائمة الاستقبال)."""
+    df, dt = parse_dates(date_from, date_to)
+    query = CallCenterAppointment.find(CallCenterAppointment.status == "pending")
+
+    if df:
+        query = query.find(CallCenterAppointment.scheduled_at >= df)
+    if dt:
+        query = query.find(CallCenterAppointment.scheduled_at < dt)
+
+    if search and search.strip():
+        s = search.strip()
+        query = query.find(
+            {
+                "$or": [
+                    {"patient_name": {"$regex": s, "$options": "i"}},
+                    {"patient_phone": {"$regex": s, "$options": "i"}},
+                    {"created_by_username": {"$regex": s, "$options": "i"}},
+                ]
+            }
+        )
+
+    items = await query.sort("-created_at").skip(skip).limit(limit).to_list()
+
+    return [
+        CallCenterAppointmentOut(
+            id=str(i.id),
+            patient_name=i.patient_name,
+            patient_phone=i.patient_phone,
+            scheduled_at=i.scheduled_at.isoformat(),
+            governorate=getattr(i, "governorate", "") or "",
+            platform=getattr(i, "platform", "") or "",
+            note=getattr(i, "note", "") or "",
+            created_by_user_id=str(i.created_by_user_id),
+            created_by_username=i.created_by_username,
+            created_at=i.created_at.isoformat(),
+            status=getattr(i, "status", "pending") or "pending",
+            accepted_at=i.accepted_at.isoformat() if getattr(i, "accepted_at", None) else None,
+        )
+        for i in items
+    ]
+
+
+@router.post("/call-center-appointments/{appointment_id}/accept")
+async def accept_call_center_appointment_for_reception(
+    appointment_id: str,
+):
+    """موظف الاستقبال يقبل الموعد: يُخفى من قائمة الاستقبال (يُعلّم مقبولاً) ويزيد عداد المواعيد المقبولة في حساب موظف الـ call center. في حساب الـ call center يبقى الموعد ويظهر الصف بلون أخضر."""
+    try:
+        oid = OID(appointment_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid appointment id")
+
+    doc = await CallCenterAppointment.get(oid)
+    if not doc:
+        raise HTTPException(status_code=404, detail="الموعد غير موجود")
+
+    creator_id = doc.created_by_user_id
+    creator = await User.get(creator_id)
+    if creator:
+        creator.call_center_accepted_count = getattr(
+            creator, "call_center_accepted_count", 0
+        ) + 1
+        await creator.save()
+
+    doc.status = "accepted"
+    doc.accepted_at = datetime.now(timezone.utc)
+    await doc.save()
+    return {"ok": True, "accepted": True}

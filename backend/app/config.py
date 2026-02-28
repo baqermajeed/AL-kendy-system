@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MONGODB_URI: str = "mongodb://localhost:27017/"
 
     # JWT settings
-    JWT_SECRET: str = "farah_sys_final_project"
+    JWT_SECRET: str = "alkendy_super_secret_key"
     JWT_ALGORITHM: str = "HS256"
     # مدة صلاحية الـ Access Token (قصير المدى - 1 ساعة)
     # Access Token قصير لأسباب أمنية، يتم تجديده تلقائياً باستخدام Refresh Token

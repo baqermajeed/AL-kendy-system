@@ -930,44 +930,59 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
                 ),
                 SizedBox(width: 30.w),
                 // Search Bar
-                Container(
-                  width: 650.w,
-                  height: 35.h,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8.r),
-                    border: Border.all(
-                      color: const Color(0xB3649FCC), // 70% opacity of 649FCC
-                      width: 2,
+                Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(
+                      minWidth: 200.w,
+                      maxWidth: 650.w,
                     ),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    textAlign: TextAlign.right,
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن مريض....',
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
+                    height: 40.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(
+                        color: const Color(0xB3649FCC), // 70% opacity of 649FCC
+                        width: 2,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      textAlign: TextAlign.right,
+                      maxLines: 1,
+                      style: TextStyle(
                         fontSize: 14.sp,
+                        height: 1.2,
                       ),
-                      // Icon from the right (Arabic layout)
-                      suffixIcon: Icon(
-                        Icons.search,
-                        color: Colors.grey[400],
-                        size: 20.sp,
+                      decoration: InputDecoration(
+                        hintText: 'ابحث عن مريض....',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14.sp,
+                          height: 1.2,
+                        ),
+                        // Icon from the right (Arabic layout)
+                        suffixIcon: Padding(
+                          padding: EdgeInsets.all(8.w),
+                          child: Icon(
+                            Icons.search,
+                            color: Colors.grey[400],
+                            size: 20.sp,
+                          ),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
+                        isDense: true,
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
+                      onChanged: (value) {
+                        setState(() {});
+                      },
+                      cursorColor: AppColors.primary,
                     ),
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    cursorColor: AppColors.primary,
                   ),
                 ),
                 SizedBox(width: 30.w),
@@ -5983,16 +5998,35 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
                 const SizedBox(height: 16),
                 // ID Card Preview
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: _buildPatientIdCard(initialPatient),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // حساب المساحة المتاحة للبطاقة
+                      double availableWidth = constraints.maxWidth - 40;
+                      double availableHeight = constraints.maxHeight - 40;
+                      
+                      // حساب الحجم المناسب مع الحفاظ على النسبة
+                      const double cardAspectRatio = 1010 / 638;
+                      double cardWidth = availableWidth;
+                      double cardHeight = cardWidth / cardAspectRatio;
+                      
+                      if (cardHeight > availableHeight) {
+                        cardHeight = availableHeight;
+                        cardWidth = cardHeight * cardAspectRatio;
+                      }
+                      
+                      return SingleChildScrollView(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: SizedBox(
+                              width: cardWidth,
+                              height: cardHeight,
+                              child: _buildPatientIdCard(initialPatient),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -6005,205 +6039,237 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
 
   // Widget لبطاقة الهوية
   Widget _buildPatientIdCard(PatientModel patient) {
-    // القياس المطلوب: w1010 h638
-    const double cardWidth = 1010;
-    const double cardHeight = 638;
+    // القياس المطلوب: w1010 h638 (القيم المرجعية)
+    const double baseCardWidth = 1010;
+    const double baseCardHeight = 638;
 
     return RepaintBoundary(
       key: _idCardKey,
-      child: Container(
-        width: cardWidth,
-        height: cardHeight,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(0),
-        ),
-        child: Stack(
-          children: [
-            // المحتوى الرئيسي
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // حساب الحجم الفعلي للبطاقة بناءً على المساحة المتاحة
+          double availableWidth = constraints.maxWidth.isFinite 
+              ? constraints.maxWidth 
+              : baseCardWidth;
+          double availableHeight = constraints.maxHeight.isFinite 
+              ? constraints.maxHeight 
+              : baseCardHeight;
+          
+          // حساب نسبة التكبير/التصغير
+          double scaleX = availableWidth / baseCardWidth;
+          double scaleY = availableHeight / baseCardHeight;
+          double scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.0, 1.0); // استخدام الأصغر مع الحد الأقصى 1.0
+          
+          // الحجم الفعلي للبطاقة
+          double cardWidth = baseCardWidth * scale;
+          double cardHeight = baseCardHeight * scale;
+          
+          // دالة مساعدة لحساب القيم النسبية
+          double scaleValue(double value) => value * scale;
+          
+          return Container(
+            width: cardWidth,
+            height: cardHeight,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(0),
+            ),
+            child: Stack(
               children: [
-                // الجانب الأيسر: النصوص والحقول
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: 6, top: 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(height: 24),
-                        // العنوان العربي
-                        Text(
-                          'عيادة الكندي التخصصية لطب الاسنان',
-                          style: GoogleFonts.cairo(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF649FCC),
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // العنوان الإنجليزي
-                        Text(
-                          'AL-Kendy Dental Center',
-                          style: GoogleFonts.cairo(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: const ui.Color.fromARGB(255, 251, 86, 15),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 35),
-                        // حقل الاسم
-                        _buildInfoFieldNew(' : اسم المراجع', _getThreePartName(patient.name), cardWidth: 500),
-                        SizedBox(height: 25),
-                        // حقل رقم الهاتف
-                        _buildInfoFieldNew(' : رقم الهاتف', patient.phoneNumber, cardWidth: 500),
-                        SizedBox(height: 25),
-                        // حقل الجنس
-                        _buildInfoFieldNew(
-                          ' : نوع الجنس',
-                          patient.gender == 'male'
-                              ? 'ذكر'
-                              : patient.gender == 'female'
-                                  ? 'أنثى'
-                                  : patient.gender,
-                          cardWidth: 500,
-                        ),
-                        SizedBox(height: 25),
-                        // حقل المحافظة
-                        _buildInfoFieldNew(' : المحافظة', patient.city, cardWidth: 500),
-                      ],
-                    ),
-                  ),
-                ),
-                // الجانب الأيمن: الكونتينر الأزرق
-                Container(
-                  width: 378,
-                  height: 592,
-                  margin: EdgeInsets.only(right: 34, top: cardHeight - 592),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF649FCC),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 23,
-                        spreadRadius: 4,
-                        offset: Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    children: [
-                      // دائرة الصورة
-                      Positioned(
-                        top: 53,
-                        left: (378 - 236) / 2,
-                        child: Container(
-                          width: 236,
-                          height: 236,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF649FCC),
-                            border: Border.all(
-                               color: const ui.Color.fromARGB(255, 251, 86, 15),
-                              width: 3,
+                // المحتوى الرئيسي
+                Row(
+                  children: [
+                    // الجانب الأيسر: النصوص والحقول
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: scaleValue(6), top: 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(height: scaleValue(24)),
+                            // العنوان العربي
+                            Text(
+                              'عيادة الكندي التخصصية لطب الاسنان',
+                              style: GoogleFonts.cairo(
+                                fontSize: scaleValue(32),
+                                fontWeight: FontWeight.w900,
+                                color: const Color(0xFF649FCC),
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            // العنوان الإنجليزي
+                            Text(
+                              'AL-Kendy Dental Center',
+                              style: GoogleFonts.cairo(
+                                fontSize: scaleValue(36),
+                                fontWeight: FontWeight.bold,
+                                color: const ui.Color.fromARGB(255, 251, 86, 15),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: scaleValue(35)),
+                            // حقل الاسم
+                            _buildInfoFieldNew(' : اسم المراجع', _getThreePartName(patient.name), 
+                                cardWidth: scaleValue(500), scale: scale),
+                            SizedBox(height: scaleValue(25)),
+                            // حقل رقم الهاتف
+                            _buildInfoFieldNew(' : رقم الهاتف', patient.phoneNumber, 
+                                cardWidth: scaleValue(500), scale: scale),
+                            SizedBox(height: scaleValue(25)),
+                            // حقل الجنس
+                            _buildInfoFieldNew(
+                              ' : نوع الجنس',
+                              patient.gender == 'male'
+                                  ? 'ذكر'
+                                  : patient.gender == 'female'
+                                      ? 'أنثى'
+                                      : patient.gender,
+                              cardWidth: scaleValue(500),
+                              scale: scale,
+                            ),
+                            SizedBox(height: scaleValue(25)),
+                            // حقل المحافظة
+                            _buildInfoFieldNew(' : المحافظة', patient.city, 
+                                cardWidth: scaleValue(500), scale: scale),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // الجانب الأيمن: الكونتينر الأزرق
+                    Container(
+                      width: scaleValue(378),
+                      height: scaleValue(592),
+                      margin: EdgeInsets.only(right: scaleValue(34), top: cardHeight - scaleValue(592)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF649FCC),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(scaleValue(30)),
+                          topRight: Radius.circular(scaleValue(30)),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: scaleValue(23),
+                            spreadRadius: scaleValue(4),
+                            offset: Offset(0, 0),
                           ),
-                          child: Padding(
-                            padding: EdgeInsets.all(4),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          // دائرة الصورة
+                          Positioned(
+                            top: scaleValue(53),
+                            left: (scaleValue(378) - scaleValue(236)) / 2,
                             child: Container(
-                              width: 228,
-                              height: 228,
+                              width: scaleValue(236),
+                              height: scaleValue(236),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
+                                color: const Color(0xFF649FCC),
+                                border: Border.all(
+                                  color: const ui.Color.fromARGB(255, 251, 86, 15),
+                                  width: scaleValue(3),
+                                ),
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(scaleValue(4)),
+                                child: Container(
+                                  width: scaleValue(228),
+                                  height: scaleValue(228),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipOval(
+                                    child: patient.imageUrl != null
+                                        ? CachedNetworkImage(
+                                            imageUrl: ImageUtils.convertToValidUrl(patient.imageUrl) ?? '',
+                                            fit: BoxFit.cover,
+                                            errorWidget: (context, url, error) => Icon(
+                                              Icons.person,
+                                              size: scaleValue(114),
+                                              color: Colors.grey.shade400,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.person,
+                                            size: scaleValue(114),
+                                            color: Colors.grey.shade400,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // كونتينر الباركود في الأسفل
+                          Positioned(
+                            bottom: 0,
+                            left: (scaleValue(378) - scaleValue(228)) / 2,
+                            child: Container(
+                              width: scaleValue(228),
+                              height: scaleValue(260),
+                              decoration: BoxDecoration(
                                 color: Colors.white,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(scaleValue(20)),
+                                  topRight: Radius.circular(scaleValue(20)),
+                                ),
                               ),
-                              child: ClipOval(
-                                child: patient.imageUrl != null
-                                    ? CachedNetworkImage(
-                                        imageUrl: ImageUtils.convertToValidUrl(patient.imageUrl) ?? '',
-                                        fit: BoxFit.cover,
-                                        errorWidget: (context, url, error) => Icon(
-                                          Icons.person,
-                                          size: 114,
-                                          color: Colors.grey.shade400,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.person,
-                                        size: 114,
-                                        color: Colors.grey.shade400,
-                                      ),
+                              padding: EdgeInsets.only(
+                                top: scaleValue(30), 
+                                left: scaleValue(12), 
+                                right: scaleValue(12)
+                              ),
+                              child: QrImageView(
+                                data: patient.qrCodeData ?? patient.id,
+                                version: QrVersions.auto,
+                                size: scaleValue(204),
+                                backgroundColor: Colors.white,
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                      // كونتينر الباركود في الأسفل
-                      Positioned(
-                        bottom: 0,
-                        left: (378 - 228) / 2,
-                        child: Container(
-                          width: 228,
-                          height: 260,
-                          decoration: BoxDecoration(
+                    ),
+                  ],
+                ),
+                // كونتينر "بطاقة ضمان المراجع" في الأسفل
+                Positioned(
+                  bottom: 0,
+                  left: scaleValue(90),
+                  child: Container(
+                    width: scaleValue(400),
+                    height: scaleValue(70),
+                    decoration: BoxDecoration(
+                      color: const ui.Color.fromARGB(255, 251, 86, 15),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(scaleValue(16)),
+                        topRight: Radius.circular(scaleValue(16)),
+                      ),
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: scaleValue(10)),
+                        child: Text(
+                          'بطاقة ضمان المراجع',
+                          style: GoogleFonts.cairo(
+                            fontSize: scaleValue(36),
+                            fontWeight: FontWeight.bold,
                             color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              topRight: Radius.circular(20),
-                            ),
                           ),
-                          padding: EdgeInsets.only(top: 30, left: 12, right: 12),
-                          child: QrImageView(
-                            data: patient.qrCodeData ?? patient.id,
-                            version: QrVersions.auto,
-                            size: 204,
-                            backgroundColor: Colors.white,
-                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
             ),
-            // كونتينر "بطاقة ضمان المراجع" في الأسفل
-            Positioned(
-              bottom: 0,
-              left: 90,
-              child: Container(
-                width: 400,
-                height: 70,
-                decoration: BoxDecoration(
-                   color: const ui.Color.fromARGB(255, 251, 86, 15),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      'بطاقة ضمان المراجع',
-                      style: GoogleFonts.cairo(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -6260,22 +6326,22 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
   }
 
   // Widget لحقل المعلومات الجديد
-  Widget _buildInfoFieldNew(String label, String value, {required double cardWidth}) {
+  Widget _buildInfoFieldNew(String label, String value, {required double cardWidth, required double scale}) {
     return Container(
       width: cardWidth,
-      height: 75,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      height: 75 * scale,
+      padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16 * scale),
         border: Border.all(
           color: const Color(0xFF649FCC),
-          width: 2,
+          width: 2 * scale,
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.16),
-            blurRadius: 10,
+            blurRadius: 10 * scale,
             spreadRadius: 0,
             offset: Offset(0, 0),
           ),
@@ -6288,7 +6354,7 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
             child: Text(
               value,
               style: GoogleFonts.cairo(
-                fontSize: 30,
+                fontSize: 30 * scale,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF649FCC),
               ),
@@ -6297,11 +6363,11 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
               maxLines: 1,
             ),
           ),
-          SizedBox(width: 8),
+          SizedBox(width: 8 * scale),
           Text(
             label,
             style: GoogleFonts.cairo(
-              fontSize: 24,
+              fontSize: 24 * scale,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF649FCC),
             ),

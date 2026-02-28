@@ -52,16 +52,18 @@ class AuthController extends GetxController {
           print(
             '⚠️ [AuthController] Failed to load user info, clearing session',
           );
-          await _authService.logout();
-          await _cacheService.deleteUser();
-          currentUser.value = null;
+          await _clearSession();
         }
       } else {
         print('ℹ️ [AuthController] No saved session found');
+        // مسح الـ cache إذا لم يكن هناك token
+        await _cacheService.deleteUser();
+        currentUser.value = null;
       }
     } catch (e) {
       print('❌ [AuthController] Error loading persisted session: $e');
-      currentUser.value = null;
+      // في حالة وجود خطأ (مثل 401 من refresh token)، نمسح الجلسة
+      await _clearSession();
     }
   }
 
@@ -112,16 +114,41 @@ class AuthController extends GetxController {
           } else {
             Get.offAllNamed(AppRoutes.userSelection);
           }
+        } else {
+          // فشل جلب معلومات المستخدم - قد يكون بسبب انتهاء صلاحية الـ token
+          print('⚠️ [AuthController] Failed to get user info, clearing session');
+          await _clearSession();
+          if (navigate) {
+            Get.offAllNamed(AppRoutes.userSelection);
+          }
         }
       } else {
         print('ℹ️ [AuthController] User is not logged in');
+        await _clearSession();
         if (navigate) {
           Get.offAllNamed(AppRoutes.userSelection);
         }
       }
     } catch (e) {
       print('❌ [AuthController] Error checking logged in user: $e');
+      // في حالة وجود خطأ (مثل 401 من refresh token)، نمسح الجلسة
+      await _clearSession();
+      if (navigate) {
+        Get.offAllNamed(AppRoutes.userSelection);
+      }
+    }
+  }
+
+  // مسح الجلسة بشكل كامل
+  Future<void> _clearSession() async {
+    try {
+      await _authService.logout();
+      await _cacheService.deleteUser();
       currentUser.value = null;
+      patientProfileId.value = null;
+      print('✅ [AuthController] Session cleared');
+    } catch (e) {
+      print('⚠️ [AuthController] Error clearing session: $e');
     }
   }
 

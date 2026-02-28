@@ -1,5 +1,5 @@
 class AppStrings {
-  static const String appName = 'عيادة فرح';
+  static const String appName = 'عيادة الكندي';
 
   // User Selection Screen
   static const String selectUserType = 'اختر نوع المستخدم';
@@ -38,7 +38,7 @@ class AppStrings {
   static const String homePage = 'الصفحة الرئيسية';
   static const String receptionHome = 'صفحة الاستقبال';
   static const String welcome = 'مرحبا';
-  static const String welcomeToClinic = 'اهلا بك في عيادة فرح لطب الاسنان';
+  static const String welcomeToClinic = 'اهلا بك في عيادة الكندي لطب الاسنان';
   static const String yourDoctor = 'طبيبك هو';
   static const String dentist = 'د';
   static const String specialist = 'الاختصاص : طبيب اسنان';
@@ -64,7 +64,7 @@ class AppStrings {
   static const String receptionProfile = 'ملف الاستقبال';
   static const String name = 'الاسم';
   static const String governorate = 'المحافظة';
-  static const String neighborhood = 'النجف الاشرف';
+  static const String neighborhood = 'بغداد';
   static const String logout = 'تسجيل الخروج';
 
   // Patient Profile

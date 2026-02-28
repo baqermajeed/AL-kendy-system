@@ -27,7 +27,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"frontend_desktop", origin, size)) {
+  // Window title: عيادة الكندي
+  // Using Unicode escape sequences to ensure proper encoding
+  // ع=U+0639, ي=U+064A, ا=U+0627, د=U+062F, ة=U+0629, ل=U+0644, ك=U+0643, ن=U+0646
+  if (!window.Create(L"\u0639\u064A\u0627\u062F\u0629 \u0627\u0644\u0643\u0646\u062F\u064A", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

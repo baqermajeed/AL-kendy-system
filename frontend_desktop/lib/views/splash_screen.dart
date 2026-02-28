@@ -36,10 +36,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       // التحقق من الجلسة المحفوظة
+      // إذا فشل refresh token (401)، سيقوم checkLoggedInUser بمسح الجلسة والانتقال إلى userSelection تلقائياً
       await _authController.checkLoggedInUser(navigate: true);
     } catch (e) {
       print('❌ [SplashScreen] Error checking logged in user: $e');
-      // في حالة وجود خطأ، انتقل إلى صفحة اختيار المستخدم
+      // في حالة وجود خطأ، تأكد من مسح الجلسة والانتقال إلى صفحة اختيار المستخدم
+      try {
+        await _authController.logout();
+      } catch (logoutError) {
+        print('⚠️ [SplashScreen] Error during logout: $logoutError');
+      }
       if (mounted) {
         Get.offAllNamed(AppRoutes.userSelection);
       }

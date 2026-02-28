@@ -150,6 +150,8 @@ class ApiService {
       
       if (refreshToken == null || refreshToken.isEmpty) {
         print('❌ No refresh token found');
+        // مسح الـ tokens القديمة
+        await _handleUnauthorized();
         return false;
       }
       
@@ -190,6 +192,19 @@ class ApiService {
       }
       
       print('❌ REFRESH TOKEN FAILED: ${response.data}');
+      // إذا كان الخطأ 401، مسح الـ tokens
+      if (response.statusCode == 401) {
+        print('⚠️ Refresh token expired (401), clearing tokens');
+        await _handleUnauthorized();
+      }
+      return false;
+    } on DioException catch (e) {
+      print('❌ REFRESH TOKEN ERROR: $e');
+      // إذا كان الخطأ 401، مسح الـ tokens
+      if (e.response?.statusCode == 401) {
+        print('⚠️ Refresh token expired (401), clearing tokens');
+        await _handleUnauthorized();
+      }
       return false;
     } catch (e) {
       print('❌ REFRESH TOKEN ERROR: $e');

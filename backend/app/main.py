@@ -35,7 +35,7 @@ from app.services.socket_service import sio, get_socket_app
 
 # FastAPI مع Swagger UI الافتراضي
 app = FastAPI(
-    title="Dental Clinic API",
+    title="AL-kendy API",
     debug=settings.APP_DEBUG,
 )
 
