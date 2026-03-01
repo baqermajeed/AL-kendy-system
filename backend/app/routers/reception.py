@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, Query, Body, HTTPException, UploadFile, 
 from typing import List, Optional
 from datetime import datetime, timezone
 import re
+import httpx
 
 from beanie import PydanticObjectId as OID
+from app.config import get_settings
 from beanie.operators import In
 
 from app.schemas import (
@@ -580,7 +582,7 @@ async def list_call_center_appointments_for_reception(
 async def accept_call_center_appointment_for_reception(
     appointment_id: str,
 ):
-    """موظف الاستقبال يقبل الموعد: يُخفى من قائمة الاستقبال (يُعلّم مقبولاً) ويزيد عداد المواعيد المقبولة في حساب موظف الـ call center. في حساب الـ call center يبقى الموعد ويظهر الصف بلون أخضر."""
+    """موظف الاستقبال يقبل الموعد: يُخفى من قائمة الاستقبال (يُعلّم مقبولاً) ويزيد عداد المواعيد المقبولة في حساب موظف الـ call center. إذا كان منشئ الموعد من النجف (غير موجود في الكندي) تُرسل النقطة لـ backend فرح."""
     try:
         oid = OID(appointment_id)
     except Exception:
@@ -597,6 +599,23 @@ async def accept_call_center_appointment_for_reception(
             creator, "call_center_accepted_count", 0
         ) + 1
         await creator.save()
+    else:
+        # منشئ الموعد غير موجود في الكندي (موظف النجف أضاف الموعد) → نرسل النقطة لـ فرح
+        settings = get_settings()
+        if getattr(settings, "FARAH_INTERNAL_SECRET", None):
+            base = (settings.FARAH_API_BASE_URL or "").rstrip("/")
+            url = f"{base}/call-center/internal/increment-accepted-count"
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    r = await client.post(
+                        url,
+                        json={"user_id": str(creator_id)},
+                        headers={"X-Internal-Secret": settings.FARAH_INTERNAL_SECRET},
+                    )
+                    if r.status_code not in (200, 201):
+                        pass  # لا نرفض قبول الموعد محلياً إن فشل إعلام فرح
+            except Exception:
+                pass  # لا نرفض قبول الموعد إن فشل الاتصال بفرح
 
     doc.status = "accepted"
     doc.accepted_at = datetime.now(timezone.utc)

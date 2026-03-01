@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # JWT settings — يجب أن يكون نفس القيمة في backend (فرح) ليقبل الكندي توكن موظف الـ call center.
     # على السيرفر: في .env ضع JWT_SECRET=farah_sys_final_project (كلمة project كاملة بحرف t في الآخر).
     JWT_SECRET: str = "farah_sys_final_project"
+
+    # عند قبول موعد من الاستقبال في الكندي، إذا كان منشئ الموعد من النجف نرسل النقطة لـ backend فرح.
+    FARAH_API_BASE_URL: str = "https://sys-api.farahdent.com"
+    FARAH_INTERNAL_SECRET: str | None = None
     JWT_ALGORITHM: str = "HS256"
     # مدة صلاحية الـ Access Token (قصير المدى - 1 ساعة)
     # Access Token قصير لأسباب أمنية، يتم تجديده تلقائياً باستخدام Refresh Token
