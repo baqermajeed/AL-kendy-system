@@ -67,6 +67,11 @@ class ApiConstants {
       '/reception/patients/$patientId/upload-image';
   static String receptionPatientGallery(String patientId) =>
       '/reception/patients/$patientId/gallery';
+  /// مواعيد مركز الاتصالات (لموظف الاستقبال — عرض وقبول).
+  static const String receptionCallCenterAppointments =
+      '/reception/call-center-appointments';
+  static String receptionCallCenterAppointmentAccept(String id) =>
+      '/reception/call-center-appointments/$id/accept';
 
   // Call Center Endpoints
   static const String callCenterAppointments = '/call-center/appointments';

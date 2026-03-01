@@ -36,6 +36,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:frontend_desktop/models/doctor_model.dart';
 import 'package:frontend_desktop/services/patient_service.dart';
 import 'package:frontend_desktop/services/auth_service.dart';
+import 'package:frontend_desktop/services/call_center_service.dart';
+import 'package:frontend_desktop/models/call_center_appointment_model.dart';
 import 'package:flutter/rendering.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
@@ -926,6 +928,30 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
                         size: 24.sp,
                       );
                     },
+                  ),
+                ),
+                SizedBox(width: 15.w),
+                // أيقونة مواعيد مركز الاتصالات (التي يدخلها موظفو الـ call center)
+                Tooltip(
+                  message: 'مواعيد مركز الاتصالات',
+                  child: GestureDetector(
+                    onTap: () => _showCallCenterAppointmentsDialog(context),
+                    child: Container(
+                      padding: EdgeInsets.all(6.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF649FCC).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: const Color(0xB3649FCC),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.headset_mic_rounded,
+                        color: const Color(0xFF649FCC),
+                        size: 24.sp,
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(width: 30.w),
@@ -8425,6 +8451,525 @@ class _ReceptionHomeScreenState extends State<ReceptionHomeScreen>
       _nameController.dispose();
       _phoneController.dispose();
     });
+  }
+
+  /// تنسيق تاريخ لعرض مواعيد الـ call center.
+  String _ccFormatDate(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y/$m/$d';
+  }
+
+  String _ccFormatTime(DateTime dt) {
+    final hour = dt.hour;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final isPM = hour >= 12;
+    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+    return '$displayHour:$minute ${isPM ? 'م' : 'ص'}';
+  }
+
+  String _ccFormatWeekday(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'الاثنين';
+      case DateTime.tuesday:
+        return 'الثلاثاء';
+      case DateTime.wednesday:
+        return 'الاربعاء';
+      case DateTime.thursday:
+        return 'الخميس';
+      case DateTime.friday:
+        return 'الجمعة';
+      case DateTime.saturday:
+        return 'السبت';
+      case DateTime.sunday:
+      default:
+        return 'الاحد';
+    }
+  }
+
+  String _ccFormatDayTime(DateTime dt) {
+    return '${_ccFormatWeekday(dt.weekday)} ${_ccFormatTime(dt)}';
+  }
+
+  Widget _ccHeaderCell(String text, {int flex = 1}) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        text,
+        textAlign: TextAlign.start,
+        style: TextStyle(
+          fontSize: 14.sp,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+
+  Widget _ccBodyCell(
+    String text, {
+    int flex = 1,
+    bool isBold = false,
+    bool isPhone = false,
+    Color? color,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Text(
+        text.isEmpty ? '-' : text,
+        textAlign: TextAlign.start,
+        style: TextStyle(
+          fontSize: 14.sp,
+          fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          color: color ?? const Color(0xFF334155),
+          fontFamily: isPhone ? 'Courier' : null,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  /// نافذة عرض مواعيد مركز الاتصالات (جدول + زر قبول).
+  Future<void> _showCallCenterAppointmentsDialog(BuildContext context) async {
+    final callCenterService = CallCenterService();
+    const double dialogWidth = 1050;
+    const double dialogHeight = 560;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        child: SizedBox(
+          width: dialogWidth.w,
+          height: dialogHeight.h,
+          child: _CallCenterAppointmentsDialogContent(
+            dialogContext: dialogContext,
+            callCenterService: callCenterService,
+            ccFormatDate: _ccFormatDate,
+            ccFormatDayTime: _ccFormatDayTime,
+            ccHeaderCell: _ccHeaderCell,
+            ccBodyCell: _ccBodyCell,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AcceptAppointmentButton extends StatefulWidget {
+  final String appointmentId;
+  final void Function(String appointmentId)? onAccepted;
+
+  const _AcceptAppointmentButton({
+    required this.appointmentId,
+    this.onAccepted,
+  });
+
+  @override
+  State<_AcceptAppointmentButton> createState() =>
+      _AcceptAppointmentButtonState();
+}
+
+class _AcceptAppointmentButtonState extends State<_AcceptAppointmentButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64.w,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _loading
+              ? null
+              : () async {
+                  setState(() => _loading = true);
+                  try {
+                    await CallCenterService().acceptForReception(widget.appointmentId);
+                    if (mounted) {
+                      widget.onAccepted?.call(widget.appointmentId);
+                      Get.snackbar(
+                        'تم',
+                        'تم قبول الموعد',
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: AppColors.primary,
+                        colorText: Colors.white,
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Get.snackbar(
+                        'خطأ',
+                        e.toString(),
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: AppColors.error,
+                        colorText: Colors.white,
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
+          borderRadius: BorderRadius.circular(8.r),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF9B59B6).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: const Color(0xFF9B59B6)),
+            ),
+            child: Center(
+              child: _loading
+                  ? SizedBox(
+                      width: 20.w,
+                      height: 20.h,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: const Color(0xFF9B59B6),
+                      ),
+                    )
+                  : Text(
+                      'قبول',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF9B59B6),
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CallCenterAppointmentsDialogContent extends StatefulWidget {
+  final BuildContext dialogContext;
+  final CallCenterService callCenterService;
+  final String Function(DateTime) ccFormatDate;
+  final String Function(DateTime) ccFormatDayTime;
+  final Widget Function(String, {int flex}) ccHeaderCell;
+  final Widget Function(String, {int flex, bool isBold, bool isPhone, Color? color}) ccBodyCell;
+
+  const _CallCenterAppointmentsDialogContent({
+    required this.dialogContext,
+    required this.callCenterService,
+    required this.ccFormatDate,
+    required this.ccFormatDayTime,
+    required this.ccHeaderCell,
+    required this.ccBodyCell,
+  });
+
+  @override
+  State<_CallCenterAppointmentsDialogContent> createState() =>
+      _CallCenterAppointmentsDialogContentState();
+}
+
+class _CallCenterAppointmentsDialogContentState
+    extends State<_CallCenterAppointmentsDialogContent> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _debounceTimer;
+
+  List<CallCenterAppointmentModel>? _list;
+  bool _isLoading = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+    _load();
+  }
+
+  void _onSearchChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        setState(() => _searchQuery = _searchController.text.trim());
+        _load();
+      }
+    });
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final list = await widget.callCenterService.getAppointmentsForReception(
+        limit: 200,
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+      );
+      if (mounted) {
+        setState(() {
+          _list = list;
+          _isLoading = false;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onAccepted(String appointmentId) {
+    setState(() {
+      _list = _list?.where((e) => e.id != appointmentId).toList() ?? [];
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(24.w, 20.h, 16.w, 16.h),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(widget.dialogContext).pop(),
+                icon: Icon(Icons.close, color: Colors.grey[600]),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.headset_mic_rounded,
+                        color: AppColors.primary, size: 28.sp),
+                    SizedBox(width: 10.w),
+                    Text(
+                      'مواعيد مركز الاتصالات',
+                      style: TextStyle(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 220.w,
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'بحث (اسم، هاتف، موظف)',
+                    hintStyle: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                    prefixIcon: Icon(Icons.search, size: 20.sp, color: Colors.grey[600]),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF8FAFC),
+                  ),
+                  style: TextStyle(fontSize: 13.sp),
+                  onSubmitted: (_) {
+                    setState(() => _searchQuery = _searchController.text.trim());
+                    _load();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: Colors.grey[200]),
+        Expanded(
+          child: _buildBody(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody() {
+    if (_list == null && _isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_list == null && _error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded,
+                size: 60.sp, color: AppColors.textSecondary),
+            SizedBox(height: 16.h),
+            Text(
+              'تعذر تحميل المواعيد',
+              style: TextStyle(
+                  fontSize: 16.sp, color: AppColors.textSecondary),
+            ),
+            SizedBox(height: 8.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Text(
+                _error.toString(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 12.sp, color: AppColors.textHint),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final list = _list ?? [];
+
+    return Container(
+      margin: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (_isLoading)
+            LinearProgressIndicator(
+              backgroundColor: Colors.grey[200],
+              color: AppColors.primary,
+              minHeight: 3,
+            ),
+          Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: 24.w, vertical: 20.h),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(_isLoading ? 0 : 24.r)),
+              border: Border(
+                  bottom: BorderSide(color: Colors.grey[200]!)),
+            ),
+            child: Row(
+              children: [
+                widget.ccHeaderCell('الموظف', flex: 2),
+                widget.ccHeaderCell('الملاحظات', flex: 3),
+                widget.ccHeaderCell('المحافظة', flex: 2),
+                widget.ccHeaderCell('المنصة', flex: 2),
+                widget.ccHeaderCell('رقم الهاتف', flex: 2),
+                widget.ccHeaderCell('التاريخ', flex: 2),
+                widget.ccHeaderCell('اليوم والوقت', flex: 3),
+                widget.ccHeaderCell('المريض', flex: 2),
+                SizedBox(width: 70.w),
+              ],
+            ),
+          ),
+          Expanded(
+            child: list.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.calendar_today_outlined,
+                            size: 48.sp, color: const Color(0xFF649FCC)),
+                        SizedBox(height: 24.h),
+                        Text(
+                          'لا توجد مواعيد',
+                          style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          _searchQuery.isEmpty
+                              ? 'لم يُسجّل أي موعد من مركز الاتصالات'
+                              : 'لا توجد نتائج للبحث',
+                          style: TextStyle(
+                              fontSize: 14.sp, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) =>
+                        Divider(height: 1, color: Colors.grey[100]),
+                    itemBuilder: (context, index) {
+                      final item = list[index];
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 24.w, vertical: 18.h),
+                        child: Row(
+                          children: [
+                            widget.ccBodyCell(
+                                item.createdByUsername.isNotEmpty
+                                    ? item.createdByUsername
+                                    : '-',
+                                flex: 2),
+                            widget.ccBodyCell(
+                                item.note.isNotEmpty ? item.note : '-',
+                                flex: 3),
+                            widget.ccBodyCell(
+                                item.governorate.isNotEmpty
+                                    ? item.governorate
+                                    : '-',
+                                flex: 2),
+                            widget.ccBodyCell(
+                                item.platform.isNotEmpty
+                                    ? item.platform
+                                    : '-',
+                                flex: 2),
+                            widget.ccBodyCell(item.patientPhone,
+                                flex: 2, isPhone: true),
+                            widget.ccBodyCell(
+                                widget.ccFormatDate(item.scheduledAt),
+                                flex: 2),
+                            widget.ccBodyCell(
+                                widget.ccFormatDayTime(item.scheduledAt),
+                                flex: 3),
+                            widget.ccBodyCell(item.patientName,
+                                flex: 2,
+                                isBold: true,
+                                color: const Color(0xFF649FCC)),
+                            SizedBox(
+                              width: 70.w,
+                              child: _AcceptAppointmentButton(
+                                appointmentId: item.id,
+                                onAccepted: _onAccepted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
